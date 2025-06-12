@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
 
@@ -13,6 +13,8 @@ services:
       - "9200:9200"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    networks:
+      - ai_network
     restart: unless-stopped
 
   kibana:
@@ -23,15 +25,47 @@ services:
       - "5601:5601"
     depends_on:
       - elasticsearch
+    networks:
+      - ai_network
     restart: unless-stopped
 
-  fastapi_app:
-    build: .
+  backend:
+    build: ./backend
     ports:
       - "8000:8000"
     depends_on:
       - elasticsearch
+    networks:
+      - ai_network
+    volumes:
+      - ./shared_data:/shared_data
+
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "7860:7860"
+    depends_on:
+      - backend
+    networks:
+      - ai_network
     restart: unless-stopped
+
+  scraper:
+    build: ./scraper
+    volumes:
+      - ./shared_data:/shared_data
+    environment:
+      - OUTPUT_DIR=/shared_data
+    networks:
+      - ai_network
+    depends_on:
+      - elasticsearch
+
 
 volumes:
   esdata:
+
+networks:
+  ai_network:
+    driver: bridge

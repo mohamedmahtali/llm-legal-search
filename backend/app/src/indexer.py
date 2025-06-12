@@ -78,20 +78,29 @@ except Exception as e:
     print(f"❌ ERROR creating index '{index_name}': {e}")
     exit(1)
 
-# Charger les documents
-try:
-    dir_path = os.path.dirname(os.path.abspath(__file__))
-    json_path = os.path.join(dir_path, "documents.json")
+# Charger les documents depuis le dataset partagé
+# On rend le chemin configurable (avec fallback sur /shared_data/dataset.json)
+# Détection automatique (local / container)
+dataset_path = os.getenv("DATASET_PATH")
 
-    with open(json_path, encoding="utf-8") as f:
+if dataset_path is None:
+    if os.path.exists("./shared_data/dataset.json"):
+        dataset_path = "./shared_data/dataset.json"
+    else:
+        dataset_path = "/shared_data/dataset.json"
+
+print(f"📄 Using dataset from: {dataset_path}")
+
+try:
+    with open(dataset_path, encoding="utf-8") as f:
         documents = json.load(f)
+    print(f"✅ Loaded {len(documents)} documents from {dataset_path}")
 except FileNotFoundError:
-    print(f"❌ ERROR: {json_path} not found.")
+    print(f"❌ ERROR: {dataset_path} not found.")
     exit(1)
 except json.JSONDecodeError as e:
-    print(f"❌ ERROR: Failed to parse JSON: {e}")
+    print(f"❌ ERROR: Failed to parse JSON in {dataset_path}: {e}")
     exit(1)
-
 
 # Indexer les documents
 for i, doc in enumerate(documents):
