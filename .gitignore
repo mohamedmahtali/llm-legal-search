@@ -6,7 +6,6 @@ __pycache__/
 *.sqlite3
 *.env
 *.DS_Store
-shared_data/
 venv/
 backend/app/venv/
 frontend/app/venv/
