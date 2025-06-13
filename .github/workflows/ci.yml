@@ -39,10 +39,14 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -r backend/app/requirements.txt
 
-    - name: Prepare mock dataset
+    - name: Prepare mock dataset (TEMPORARY - replace with make scrape when ready)
       run: |
         python backend/app/src/generate_mock_dataset.py
-        ls -lh backend/app/shared_data/
+        ls -lh /shared_data/
+
+    # FUTURE: replace this block with:
+    # - name: Run real scraper
+    #   run: make scrape
 
     - name: Run indexer
       run: |
@@ -52,7 +56,7 @@ jobs:
       run: |
         docker run -d --name backend-test --network host \
           -e ELASTIC_URL=http://localhost:9200 \
-          -v ${{ github.workspace }}/backend/app/shared_data:/shared_data \
+          -v ${{ github.workspace }}/shared_data:/shared_data \
           llm-legal-search-backend
         sleep 10
 
