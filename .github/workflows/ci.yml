@@ -1,80 +1,70 @@
-name: CI - Build and Test AI Legal Search Project
+# .github/workflows/ci.yml
+
+name: CI - Build & Test LLM Legal Search
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build-and-test:
-    name: Build & Test backend / frontend / scraper
+    name: Build & Test Docker Images + API Check
     runs-on: ubuntu-latest
 
-    services:
-      elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-        env:
-          discovery.type: single-node
-          xpack.security.enabled: "false"
-          xpack.security.transport.ssl.enabled: "false"
-          xpack.security.http.ssl.enabled: "false"
-        ports:
-          - 9200:9200
-        options: >-
-          --health-cmd "curl --fail http://localhost:9200/_cluster/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+    - name: Build backend image
+      run: docker build -t llm-legal-search-backend ./backend
 
-      # Build backend
-      - name: Build Backend image
-        run: docker build -t mylegalsearch-backend ./backend
+    - name: Build frontend image
+      run: docker build -t llm-legal-search-frontend ./frontend
 
-      # Build frontend
-      - name: Build Frontend image
-        run: docker build -t mylegalsearch-frontend ./frontend
+    - name: Build scraper image
+      run: docker build -t llm-legal-search-scraper ./scraper
 
-      # Build scraper
-      - name: Build Scraper image
-        run: docker build -t mylegalsearch-scraper ./scraper
+    - name: Run Elasticsearch container
+      run: |
+        docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+        sleep 20
 
-      # Wait for Elasticsearch to be ready
-      - name: Wait for Elasticsearch
-        run: |
-          echo "Waiting for Elasticsearch to be ready..."
-          for i in {1..10}; do
-            curl --fail http://localhost:9200/_cluster/health && break || sleep 5
-          done
+    - name: Install backend dependencies (for indexer / generate_mock_dataset)
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r backend/app/requirements.txt
 
-      # Run Backend container (test)
-      - name: Run Backend container for test
-        run: |
-          docker run -d --name backend-test --network="host" mylegalsearch-backend
-          sleep 10  # give backend time to start
+    - name: Prepare mock dataset
+      run: |
+        python backend/app/src/generate_mock_dataset.py
+        ls -lh backend/app/shared_data/
 
-      # Test API endpoint /search (basic test)
-      - name: Test /search endpoint
-        run: |
-          curl --fail http://localhost:8000/search?q=test || (docker logs backend-test && exit 1)
+    - name: Run indexer
+      run: |
+        python backend/app/src/indexer.py
 
-      # Stop container
-      - name: Cleanup containers
-        run: |
-          docker stop backend-test
-          docker rm backend-test
+    - name: Run backend container
+      run: |
+        docker run -d --name backend-test --network host \
+          -e ELASTIC_URL=http://localhost:9200 \
+          -v ${{ github.workspace }}/backend/app/shared_data:/shared_data \
+          llm-legal-search-backend
+        sleep 10
+
+    - name: Test backend root endpoint
+      run: |
+        curl --fail http://localhost:8000/ || (echo "Backend not responding!" && exit 1)
+
+    - name: Test backend search endpoint
+      run: |
+        curl --fail "http://localhost:8000/search?q=test" || (echo "Search failed!" && exit 1)
+
+    - name: Clean up
+      run: |
+        docker stop backend-test elasticsearch
+        docker rm backend-test elasticsearch
