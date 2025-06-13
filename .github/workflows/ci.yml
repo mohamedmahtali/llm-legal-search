@@ -41,7 +41,7 @@ jobs:
 
     - name: Prepare mock dataset (TEMPORAIRE - remplacer par make scrape lorsque vous êtes prêt)
       run: |
-        python scraper/app/src/generate_mock_dataset.py
+        python scraper/app/generate_mock_dataset.py
         # make scrape
         ls -lh shared_data/
 
