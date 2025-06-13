@@ -39,14 +39,82 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -r backend/app/requirements.txt
 
-    - name: Prepare mock dataset (TEMPORARY - replace with make scrape when ready)
+    - name: Prepare mock dataset (TEMPORAIRE - remplacer par make scrape lorsque vous êtes prêt)
       run: |
         python backend/app/src/generate_mock_dataset.py
-        ls -lh /shared_data/
+        # make scrape
+        ls -lh shared_data/
 
-    # FUTURE: replace this block with:
-    # - name: Run real scraper
-    #   run: make scrape
+    - name: Run indexer
+      run: |
+        python backend/app/src/indexer.py
+
+    - name: Run backend container
+      run: |
+        docker run -d --name backend-test --network host \
+          -e ELASTIC_URL=http://localhost:9200 \
+          -v ${{ github.workspace }}/shared_data:/shared_data \
+          llm-legal-search-backend
+        sleep 10
+
+    - name: Test backend root endpoint
+      run: |
+        curl --fail http://localhost:8000/ || (echo "Backend not responding!" && exit 1)
+
+    - name: Test backend search endpoint
+      run: |
+        curl --fail "http://localhost:8000/search?q=test" || (echo "Search failed!" && exit 1)
+
+    - name: Clean up
+      run: |
+        docker stop backend-test elasticsearch
+        docker rm backend-test elasticsearch
+# .github/workflows/ci.yml
+
+name: CI - Build & Test LLM Legal Search
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test Docker Images + API Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build backend image
+      run: docker build -t llm-legal-search-backend ./backend
+
+    - name: Build frontend image
+      run: docker build -t llm-legal-search-frontend ./frontend
+
+    - name: Build scraper image
+      run: docker build -t llm-legal-search-scraper ./scraper
+
+    - name: Run Elasticsearch container
+      run: |
+        docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+        sleep 20
+
+    - name: Install backend dependencies (for indexer / generate_mock_dataset)
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r backend/app/requirements.txt
+
+    - name: Prepare mock dataset (TEMPORAIRE - remplacer par make scrape lorsque vous êtes prêt)
+      run: |
+        python backend/app/src/generate_mock_dataset.py
+        # make scrape
+        ls -lh shared_data/
 
     - name: Run indexer
       run: |
