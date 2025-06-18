@@ -29,7 +29,7 @@ scrape:
 
 index:
 	@echo "🚀 Running indexer..."
-	python backend/app/src/indexer.py
+	docker compose exec backend python src/indexer.py
 
 # All in one (Scrape + Index + Up)
 refresh:

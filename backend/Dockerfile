@@ -20,4 +20,4 @@ COPY app /app
 EXPOSE 8000
 
 # Commande de lancement de l'API
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

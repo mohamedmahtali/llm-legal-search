@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel
 from elasticsearch import Elasticsearch, exceptions
 from transformers import pipeline
 import os
@@ -8,10 +9,10 @@ elastic_url = os.getenv("ELASTIC_URL", "http://elasticsearch:9200")
 
 app = FastAPI()
 
-# Client ES
+# Client Elasticsearch
 es = Elasticsearch(elastic_url)
 
-# Pipeline summarization (HuggingFace)
+# Pipeline de résumé (HuggingFace)
 summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
 
 @app.get("/")
@@ -52,10 +53,13 @@ def search(q: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during search: {e}")
 
+class EnrichRequest(BaseModel):
+    text: str
+
 @app.post("/enrich")
-def enrich(text: str):
+def enrich(request: EnrichRequest = Body(...)):
     try:
-        summary = summarizer(text, max_length=60, min_length=20, do_sample=False)[0]["summary_text"]
+        summary = summarizer(request.text, max_length=60, min_length=20, do_sample=False)[0]["summary_text"]
         return {"summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during summarization: {e}")

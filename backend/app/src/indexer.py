@@ -4,14 +4,14 @@ import os
 import time
 
 # Lecture de l'URL Elastic
-elastic_url = os.getenv("ELASTIC_URL", "http://localhost:9200")
+elastic_url = os.getenv("ELASTIC_URL", "http://elasticsearch:9200")
 print(f"🔗 Connecting to Elasticsearch at {elastic_url}")
 
 # Création du client Elasticsearch
 es = Elasticsearch(elastic_url)
 
 # Fonction pour attendre qu'Elasticsearch soit prêt
-def wait_for_elasticsearch(es_client, timeout=60):
+def wait_for_elasticsearch(es_client, timeout=400):
     for i in range(timeout):
         try:
             health = es_client.cluster.health()

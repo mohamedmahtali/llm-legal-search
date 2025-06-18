@@ -52,7 +52,7 @@ jobs:
     - name: Run backend container
       run: |
         docker run -d --name backend-test --network host \
-          -e ELASTIC_URL=http://localhost:9200 \
+          -e ELASTIC_URL=http://elasticsearch:9200 \
           -v ${{ github.workspace }}/shared_data:/shared_data \
           llm-legal-search-backend
         sleep 10

@@ -4,3 +4,4 @@ elasticsearch==8.13.0
 transformers==4.40.1
 torch==2.2.2
 requests==2.31.0
+numpy<2
