@@ -45,9 +45,12 @@ jobs:
         # make scrape
         ls -lh shared_data/
 
-    - name: Run indexer
+    - name: Run indexer inside backend container
       run: |
-        python backend/app/src/indexer.py
+        docker run --rm --network host \
+          -v ${{ github.workspace }}/shared_data:/shared_data \
+          -e ELASTIC_URL=http://localhost:9200 \
+          llm-legal-search-backend python /app/src/indexer.py
 
     - name: Run backend container
       run: |
