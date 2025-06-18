@@ -55,13 +55,13 @@ jobs:
           -e ELASTIC_URL=http://elasticsearch:9200 \
           llm-legal-search-backend python /app/src/indexer.py
 
-    - name: Run backend container
-      run: |
-        docker run -d --name backend-test --network llm-net -p 8000:8000 \
-          -e ELASTIC_URL=http://elasticsearch:9200 \
-          -v ${{ github.workspace }}/shared_data:/shared_data \
-          llm-legal-search-backend
-        sleep 30
+#    - name: Run backend container
+#      run: |
+#        docker run -d --name backend-test --network llm-net -p 8000:8000 \
+#          -e ELASTIC_URL=http://elasticsearch:9200 \
+#          -v ${{ github.workspace }}/shared_data:/shared_data \
+#          llm-legal-search-backend
+#        sleep 30
 
     - name: Test backend root endpoint
       run: |
