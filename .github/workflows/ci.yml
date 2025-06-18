@@ -61,7 +61,7 @@ jobs:
           -e ELASTIC_URL=http://elasticsearch:9200 \
           -v ${{ github.workspace }}/shared_data:/shared_data \
           llm-legal-search-backend
-        sleep 10
+        sleep 30
 
     - name: Test backend root endpoint
       run: |
