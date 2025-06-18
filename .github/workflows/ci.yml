@@ -18,6 +18,9 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    - name: Create Docker network
+      run: docker network create llm-net
+
     - name: Build backend image
       run: docker build -t llm-legal-search-backend ./backend
 
@@ -29,7 +32,7 @@ jobs:
 
     - name: Run Elasticsearch container
       run: |
-        docker run -d --name elasticsearch -p 9200:9200 \
+        docker run -d --name elasticsearch --network llm-net -p 9200:9200 \
           -e "discovery.type=single-node" \
           -e "xpack.security.enabled=false" \
           docker.elastic.co/elasticsearch/elasticsearch:8.13.4
@@ -47,28 +50,31 @@ jobs:
 
     - name: Run indexer inside backend container
       run: |
-        docker run --rm --network host \
+        docker run --rm --network llm-net \
           -v ${{ github.workspace }}/shared_data:/shared_data \
-          -e ELASTIC_URL=http://localhost:9200 \
+          -e ELASTIC_URL=http://elasticsearch:9200 \
           llm-legal-search-backend python /app/src/indexer.py
 
     - name: Run backend container
       run: |
-        docker run -d --name backend-test --network host \
-          -e ELASTIC_URL=http://localhost:9200 \
+        docker run -d --name backend-test --network llm-net -p 8000:8000 \
+          -e ELASTIC_URL=http://elasticsearch:9200 \
           -v ${{ github.workspace }}/shared_data:/shared_data \
           llm-legal-search-backend
         sleep 10
 
     - name: Test backend root endpoint
       run: |
-        curl --fail http://localhost:8000/ || (echo "Backend not responding!" && exit 1)
+        docker run --rm --network llm-net curlimages/curl:latest \
+          curl --fail http://backend-test:8000/ || (echo "Backend not responding!" && exit 1)
 
     - name: Test backend search endpoint
       run: |
-        curl --fail "http://localhost:8000/search?q=test" || (echo "Search failed!" && exit 1)
+        docker run --rm --network llm-net curlimages/curl:latest \
+          curl --fail "http://backend-test:8000/search?q=test" || (echo "Search failed!" && exit 1)
 
     - name: Clean up
       run: |
         docker stop backend-test elasticsearch
         docker rm backend-test elasticsearch
+        docker network rm llm-net
