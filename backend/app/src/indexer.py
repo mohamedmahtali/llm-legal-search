@@ -4,20 +4,21 @@ from elasticsearch import Elasticsearch
 
 print("🚀 Début de l'indexation...")
 
-# Connexion à Elasticsearch
+# Connexion à Elasticsearch (dynamique selon env)
 try:
-    es = Elasticsearch(hosts=["http://elasticsearch:9200"])
+    elastic_url = os.getenv("ELASTIC_URL", "http://localhost:9200")
+    es = Elasticsearch(hosts=[elastic_url])
     if not es.ping():
         raise ValueError("Elasticsearch ne répond pas")
-    print("✅ Connexion à Elasticsearch réussie.")
+    print(f"✅ Connexion à Elasticsearch réussie ({elastic_url})")
 except Exception as e:
     print(f"❌ ERREUR de connexion à Elasticsearch : {e}")
     exit(1)
 
-# Définir le nom de l'index
+# Nom de l'index
 index_name = "legal_docs"
 
-# Mapping de l'index
+# Mapping
 index_body = {
     "mappings": {
         "properties": {
@@ -47,14 +48,10 @@ except Exception as e:
     print(f"❌ ERREUR création de l'index : {e}")
     exit(1)
 
-# Déterminer le chemin du dataset
+# Dataset path
 dataset_path = os.getenv("DATASET_PATH")
-
 if dataset_path is None:
-    if os.path.exists("./shared_data/dataset.json"):
-        dataset_path = "./shared_data/dataset.json"
-    else:
-        dataset_path = "/shared_data/dataset.json"
+    dataset_path = "./shared_data/dataset.json" if os.path.exists("./shared_data/dataset.json") else "/shared_data/dataset.json"
 
 print(f"📄 Chemin du dataset utilisé : {dataset_path}")
 
@@ -70,13 +67,14 @@ except json.JSONDecodeError as e:
     print(f"❌ ERREUR JSON dans {dataset_path} : {e}")
     exit(1)
 
-# Indexer chaque document
+# Indexation
 for i, doc in enumerate(documents):
     try:
         es.index(index=index_name, body=doc)
-        if i < 5 or i == len(documents) - 1:  # Ne pas tout afficher en CI
+        if i < 5 or i == len(documents) - 1:
             print(f"📌 Document {i+1}/{len(documents)} indexé.")
     except Exception as e:
         print(f"❌ ERREUR indexation document {i+1} : {e}")
 
 print("🎉 Fin de l'indexation.")
+

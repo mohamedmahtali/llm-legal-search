@@ -1,5 +1,3 @@
-# .github/workflows/ci.yml
-
 name: CI - Build & Test LLM Legal Search
 
 on:
@@ -31,7 +29,10 @@ jobs:
 
     - name: Run Elasticsearch container
       run: |
-        docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+        docker run -d --name elasticsearch -p 9200:9200 \
+          -e "discovery.type=single-node" \
+          -e "xpack.security.enabled=false" \
+          docker.elastic.co/elasticsearch/elasticsearch:8.13.4
         sleep 20
 
     - name: Install backend dependencies (for indexer / generate_mock_dataset)
@@ -42,7 +43,6 @@ jobs:
     - name: Prepare mock dataset (TEMPORAIRE - remplacer par make scrape lorsque vous êtes prêt)
       run: |
         python scraper/app/generate_mock_dataset.py
-        # make scrape
         ls -lh shared_data/
 
     - name: Run indexer inside backend container
@@ -55,7 +55,7 @@ jobs:
     - name: Run backend container
       run: |
         docker run -d --name backend-test --network host \
-          -e ELASTIC_URL=http://elasticsearch:9200 \
+          -e ELASTIC_URL=http://localhost:9200 \
           -v ${{ github.workspace }}/shared_data:/shared_data \
           llm-legal-search-backend
         sleep 10
